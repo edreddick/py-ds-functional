@@ -32,7 +32,7 @@ def cre_df(nb_rows=1000, percent_na = [0.01, 0.1, 0.9], name = range(3)):
     df.index = pd.date_range('2001/01/01', periods=nb_rows, freq='H')
     return df
 
-## function that removes columns that may that have too many NA values
+## function that removes columns that may have too many NA values
 def nas_remover(df, na_percentage=0.2):
     na_df = df.isna().sum() / len(df)
     list_col_to_keep = na_df[na_df < na_percentage].index
