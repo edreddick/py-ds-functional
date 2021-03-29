@@ -4,6 +4,30 @@ Playing with python, typical data science tasks, and functional programming.
 Rewrite of:
 https://towardsdatascience.com/functional-programing-in-data-science-projects-c909c11138bb
 """
+
+########################## notes ##########################
+## bad code for fitting models, but shows ex of pre-processing:
+## https://www.youtube.com/watch?v=0Lt9w-BxKFQ
+## import seaborn as sns
+## import matplotlib.pyplot as plt
+## from sklearn.ensemble import RandomForestClassifier 
+## from sklearn.metrics import confusion_matrix, classification_report
+## from sklearn.model_selection import train_test_split
+## from sklearn.preprocessing import StandardScalar, LabelEncoder
+## %matplotlib inline
+## from sklearn.linear_model import LinearRegression
+## model = LinearRegression(normalize=True)
+## model.fit(X, y)
+
+## sc = StandardScarler()
+## X_train = sc.fit_transform(X_train)
+## X_test = sc.transform(X_test)
+## preprocessing.FunctionTransformer seems promising
+## sklearn.pipeline also seems promising
+## RepeatedStratifiedKFold seems promising
+## grid search seems promising: https://scikit-learn.org/stable/modules/grid_search.html#grid-search
+## nested cv seems promising: https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html#sphx-glr-download-auto-examples-model-selection-plot-nested-cross-validation-iris-py
+
 # import pdb 
 # pdb.set_trace() is debugger, similar to browser() in R
 # interact sometimes needed, followed by cntr + d to exit
@@ -32,7 +56,7 @@ def cre_df(nb_rows=1000, percent_na = [0.01, 0.1, 0.9], name = range(3)):
     df.index = pd.date_range('2001/01/01', periods=nb_rows, freq='H')
     return df
 
-## function that removes columns that may have too many NA values
+## function that removes columns that may that have too many NA values
 def nas_remover(df, na_percentage=0.2):
     na_df = df.isna().sum() / len(df)
     list_col_to_keep = na_df[na_df < na_percentage].index
