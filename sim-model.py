@@ -9,11 +9,12 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import PoissonRegressor
 from sklearn.model_selection import cross_val_score, KFold
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import FunctionTransformer, StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-
-
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+import pdb
 
 np.random.seed(1)
 n = 10000
@@ -63,21 +64,79 @@ imp = SimpleImputer(missing_values=np.nan, strategy='mean')
 transformer_num = FunctionTransformer(func=imp
                                   , validate=False)
 
-x_char=Xtrain['char_a']
-def step_other(x_char, threshold):
+## for catagorical variables 
+## pool infrequently occurring values into an "other" category
+#Xtrain.loc[Xtrain.index[0], 'char_a'] = np.NaN
+
+def get_support_levels(x_char, threshold):
     df = pd.DataFrame({'x_char' :x_char})
     df = pd.DataFrame(df['x_char'].value_counts()/len(x_char))
+    return(list(df.query('x_char > @threshold').index))
+
+sup_lev = get_support_levels(Xtrain['char_a'], .01)
+
+def step_other(x_char, sup_lev):
+    df = pd.DataFrame({'x_char' :x_char})
+    df = df.assign(x_char = [a if a in sup_lev else 'other' for a in df['x_char']])
+    return(df['x_char'])
     
-    ## map across if levels less than threshold change level to other in vector
-    ## return vector
+step_other(Xtrain['char_a'], sup_lev)
     
-transformer_char = FunctionTransformer(func=lambda x: x + 1
-                                  , inverse_func=lambda x: x - 1, validate=False)
+class CustomScaler(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        super().__init__()
+        self.means_ = None
+        self.std_ = None
+
+    def fit(self, X, y=None):
+        X = X.to_numpy()
+        self.means_ = X.mean(axis=0, keepdims=True)
+        self.std_ = X.std(axis=0, keepdims=True)
+
+        return self
+
+    def transform(self, X, y=None):
+        X[:] = (X.to_numpy() - self.means_) / self.std_
+
+        return X
+
+my_CustomScaler = CustomScaler()
+
+
+## this doesn't work probably because of first transformation being passed back
+## as array with column names, or more likely because it's using the orignal num_a
+## which has na values
+#ct = ColumnTransformer(
+#    [("num", imp, ['num_a', 'exposure']), 
+#     ("num1", my_CustomScaler, ['num_a'])])
+
+# define transformers
+si_n = SimpleImputer(missing_values=np.nan, strategy='mean')
+si_c = SimpleImputer(strategy='constant', fill_value='other')
+ss = StandardScaler()
+ohe = OneHotEncoder()
+# define column groups with same processing
+cat_vars = ['char_a']
+num_vars = ['num_a', 'exposure']
+# set up pipelines for each column group
+categorical_pipe = Pipeline([('si_c', si_c), ('ohe', ohe)])
+numeric_pipe = Pipeline([('si_n', si_n), ('ss', ss)])
+# set up columnTransformer
 ct = ColumnTransformer(
-    [("num", imp, ['num_a', 'exposure']), 
-     ("char", transformer_char, ['char_a'])])
+                    transformers=[
+                        ('nums', numeric_pipe, num_vars),
+                        ('cats', categorical_pipe, cat_vars)
+                    ],
+                    remainder='drop',
+                    n_jobs=-1
+                    )
+
+#ct = ColumnTransformer(
+#    [("num", imp, ['num_a', 'exposure']), 
+#     ("char", transformer_char, ['char_a'])])
 
 #transformer_num.transform(X)
+## test values
 ct.fit_transform(Xtrain)
 ct.transform(Xtest)
 
@@ -85,19 +144,26 @@ ct.transform(Xtest)
 ## need to specify case weight, currently treated as any other feature
 glm = PoissonRegressor()
 
+## specify pipeline
+pipe = Pipeline([('ct', ct), ('glm', glm)])
+
 ## Step 3: eval model protocol on training data using CV
 ## this should be nested CV if part of model protocol includes hyperparameter tuning
+## the folds should be set up with respect to the proportion of the response
 cv = KFold(n_splits=4, shuffle=True, random_state=1)
 
 ## according to the documentation this is the percentage of deviance explained
-cross_val_score(glm, X=Xtrain, y=ytrain, cv=cv)
+#cross_val_score(glm, X=Xtrain, y=ytrain, cv=cv)
+cross_val_score(pipe, X=Xtrain, y=ytrain, cv=cv)
 
 ## Step 4: fit final model
-glm.fit(Xtrain, ytrain)
+#glm.fit(Xtrain, ytrain)
+pipe.fit(Xtrain, ytrain)
 
 ## Step 5: eval final model on testing data
 ## according to the documentation this is the percentage of deviance explained
-glm.score(Xtest, ytest)
+#glm.score(Xtest, ytest)
+pipe.score(Xtest, ytest)
 
 ## scrap code for hist
 import matplotlib.pyplot as plt

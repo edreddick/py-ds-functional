@@ -29,6 +29,8 @@ https://towardsdatascience.com/functional-programing-in-data-science-projects-c9
 ## nested cv seems promising: https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html#sphx-glr-download-auto-examples-model-selection-plot-nested-cross-validation-iris-py
 ## Pipeline looks promising: https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
 ## setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-the-step-by-step-guide-with-python-code-4a7d9b068156
+## more exexplanation on setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-ef792bbb3260
+## dealing with multiple transformations on the same column: https://towardsdatascience.com/using-columntransformer-to-combine-data-processing-steps-af383f7d5260
 
 # import pdb 
 # pdb.set_trace() is debugger, similar to browser() in R
