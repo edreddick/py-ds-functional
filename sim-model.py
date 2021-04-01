@@ -9,6 +9,11 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import PoissonRegressor
 from sklearn.model_selection import cross_val_score, KFold
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+
+
 
 np.random.seed(1)
 n = 10000
@@ -30,18 +35,51 @@ del(n, beta0, beta1, beta2, mu)
 ## Step 1: pre-process data
 ## naive pre-processing, this should occur within CV folds for any pre-processing
 ## that requires estimation to avoid leakage similar to recipes in R
-def pre_pro(df):
-    df = df.replace(cleanup_nums)
-    return(df)
+#def pre_pro(df):
+#    df = df.replace(cleanup_nums)
+#    return(df)
 
-df_t = pre_pro(df)
+#df_t = pre_pro(df)
+df_t = df
 y = df_t['count']
 X = df_t.loc[:, df_t.columns != 'count']
-del(df_t)
+del(df, df_t)
 
 ## messy to create 4 datasets, look into python alternatives similar to 
 ## rsample::initial_split
 Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
+del(X, y)
+
+## test out column imputation
+## introduce NaN values
+Xtrain.loc[Xtrain.index[0], 'num_a'] = np.NaN
+Xtrain.loc[Xtrain.index[0], 'exposure'] = np.NaN
+Xtest.loc[Xtest.index[0], 'num_a'] = np.NaN
+Xtest.loc[Xtest.index[0], 'exposure'] = np.NaN
+
+imp = SimpleImputer(missing_values=np.nan, strategy='mean')
+
+## test out sci-kit learn custom preprocessing
+transformer_num = FunctionTransformer(func=imp
+                                  , validate=False)
+
+x_char=Xtrain['char_a']
+def step_other(x_char, threshold):
+    df = pd.DataFrame({'x_char' :x_char})
+    df = pd.DataFrame(df['x_char'].value_counts()/len(x_char))
+    
+    ## map across if levels less than threshold change level to other in vector
+    ## return vector
+    
+transformer_char = FunctionTransformer(func=lambda x: x + 1
+                                  , inverse_func=lambda x: x - 1, validate=False)
+ct = ColumnTransformer(
+    [("num", imp, ['num_a', 'exposure']), 
+     ("char", transformer_char, ['char_a'])])
+
+#transformer_num.transform(X)
+ct.fit_transform(Xtrain)
+ct.transform(Xtest)
 
 ## Step 2: model specification
 ## need to specify case weight, currently treated as any other feature
