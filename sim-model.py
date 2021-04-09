@@ -53,52 +53,86 @@ Xtrain.loc[Xtrain.index[0], 'num_a'] = np.NaN
 Xtest.loc[Xtest.index[0], 'num_a'] = np.NaN
 
 
-#imp = SimpleImputer(missing_values=np.nan, strategy='mean')
-
-## test out sci-kit learn custom preprocessing
-#transformer_num = FunctionTransformer(func=imp
-#                                  , validate=False)
+## test custom pipe
 
 ## for catagorical variables 
 ## pool infrequently occurring values into an "other" category
-#Xtrain.loc[Xtrain.index[0], 'char_a'] = np.NaN
-def get_support_levels(x_char, threshold):
-    df = pd.DataFrame({'x_char' :x_char})
-    df = pd.DataFrame(df['x_char'].value_counts()/len(x_char))
-    return(list(df.query('x_char > @threshold').index))
+Xtrain.loc[Xtrain.index[0], 'char_a'] = np.NaN
+Xtest.loc[Xtrain.index[0], 'char_a'] = np.NaN
+Xtrain.loc[Xtrain.index[1], 'char_a'] = 'c'
+Xtest.loc[Xtrain.index[1], 'char_a'] = 'c'
+# def get_support_levels(x_char, threshold):
+#     df = pd.DataFrame({'x_char' :x_char})
+#     df = pd.DataFrame(df['x_char'].value_counts()/len(x_char))
+#     return(list(df.query('x_char > @threshold').index))
 
-sup_lev = get_support_levels(Xtrain['char_a'], .01)
+# sup_lev = get_support_levels(Xtrain['char_a'], .01)
 
-def step_other(x_char, sup_lev):
-    df = pd.DataFrame({'x_char' :x_char})
-    df = df.assign(x_char = [a if a in sup_lev else 'other' for a in df['x_char']])
-    return(df['x_char'])
+# def step_other(x_char, sup_lev):
+#     df = pd.DataFrame({'x_char' :x_char})
+#     df = df.assign(x_char = [a if a in sup_lev else 'other' for a in df['x_char']])
+#     return(df['x_char'])
     
-step_other(Xtrain['char_a'], sup_lev)
-    
-# class CustomScaler(BaseEstimator, TransformerMixin):
-#     def __init__(self):
-#         super().__init__()
-#         self.means_ = None
-#         self.std_ = None
+# step_other(Xtrain['char_a'], sup_lev)
 
-#     def fit(self, X, y=None):
-#         X = X.to_numpy()
-#         self.means_ = X.mean(axis=0, keepdims=True)
-#         self.std_ = X.std(axis=0, keepdims=True)
+class StepOther(BaseEstimator, TransformerMixin):
+    def __init__(self, threshold):
+        super().__init__()
+        self.threshold = threshold
 
-#         return self
+    def fit(self, X, y=None):
+        df = pd.DataFrame(X, columns = ['x_char'])
+        df = pd.DataFrame(df['x_char'].value_counts()/len(df))
+        self.sup_lev = list(df.query('x_char > @self.threshold').index)
+        return self
 
-#     def transform(self, X, y=None):
-#         X[:] = (X.to_numpy() - self.means_) / self.std_
+    def transform(self, X, y=None):
+        df = pd.DataFrame(X, columns = ['x_char'])
+        df = df.assign(x_char = [a if a in self.sup_lev else 'other' for a in df['x_char']])
+        X = df.to_numpy()
+        return X
 
-#         return X
 
-# my_CustomScaler = CustomScaler()
+si_c = SimpleImputer(strategy='constant', fill_value='other')
+test = si_c.fit(Xtrain[['char_a']]).transform(Xtrain[['char_a']])
+
+my_StepOther = StepOther(.01)
+my_StepOther.fit(test)
+my_StepOther.transform(test)
+
+my_StepOther = StepOther(.01)
+my_StepOther.fit(Xtrain[['char_a']])
+my_StepOther.transform(Xtrain[['char_a']])
+
+
+si_c = SimpleImputer(strategy='constant', fill_value='other')
+test = si_c.fit(Xtrain[['char_a']]).transform(Xtrain[['char_a']])
+
+
+cat_vars = ['char_a']
+num_vars = ['num_a']
+# set up pipelines for each column group
+categorical_pipe = Pipeline([('my_StepOther', my_StepOther)])
+
+# set up columnTransformer
+ct = ColumnTransformer(
+                    transformers=[
+                        ('cats', categorical_pipe, cat_vars)
+                    ],
+                    remainder='drop',
+                    n_jobs=-1
+                    )
+## check ColumnTransformer
+ct.fit_transform(Xtrain)
+ct.transform(Xtest)
+
+
+## end test custom pipe
 
 # define transformers
 si_n = SimpleImputer(missing_values=np.nan, strategy='mean')
 si_c = SimpleImputer(strategy='constant', fill_value='other')
+so_c = StepOther(.01)
 ss = StandardScaler()
 ohe = OneHotEncoder(drop='first')
 
@@ -106,7 +140,7 @@ ohe = OneHotEncoder(drop='first')
 cat_vars = ['char_a']
 num_vars = ['num_a']
 # set up pipelines for each column group
-categorical_pipe = Pipeline([('si_c', si_c), ('ohe', ohe)])
+categorical_pipe = Pipeline([('si_c', si_c), ('so_c', so_c), ('ohe', ohe)])
 numeric_pipe = Pipeline([('si_n', si_n), ('ss', ss)])
 # set up columnTransformer
 ct = ColumnTransformer(
