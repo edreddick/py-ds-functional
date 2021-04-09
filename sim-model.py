@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import PoissonRegressor
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.preprocessing import FunctionTransformer, StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -40,41 +40,20 @@ sw = df['exposure']
 X = df.drop(['count', 'exposure'], axis=1)
 del(df)
 
-## messy to create 4 datasets, look into python alternatives similar to 
-## rsample::initial_split
+## split into training, test for features, target, and weight
 Xtrain, Xtest, ytrain, ytest, swtrain, swtest = train_test_split(
     X, y, sw, test_size = 0.25, random_state = 5)
-
 del(X, y, sw)
 
-## test out column imputation
-## introduce NaN values
+## introduce NaN and low freq values to apply column imputation
 Xtrain.loc[Xtrain.index[0], 'num_a'] = np.NaN
 Xtest.loc[Xtest.index[0], 'num_a'] = np.NaN
-
-
-## test custom pipe
-
-## for catagorical variables 
-## pool infrequently occurring values into an "other" category
 Xtrain.loc[Xtrain.index[0], 'char_a'] = np.NaN
-Xtest.loc[Xtrain.index[0], 'char_a'] = np.NaN
+Xtest.loc[Xtest.index[0], 'char_a'] = np.NaN
 Xtrain.loc[Xtrain.index[1], 'char_a'] = 'c'
-Xtest.loc[Xtrain.index[1], 'char_a'] = 'c'
-# def get_support_levels(x_char, threshold):
-#     df = pd.DataFrame({'x_char' :x_char})
-#     df = pd.DataFrame(df['x_char'].value_counts()/len(x_char))
-#     return(list(df.query('x_char > @threshold').index))
+Xtest.loc[Xtest.index[1], 'char_a'] = 'c'
 
-# sup_lev = get_support_levels(Xtrain['char_a'], .01)
-
-# def step_other(x_char, sup_lev):
-#     df = pd.DataFrame({'x_char' :x_char})
-#     df = df.assign(x_char = [a if a in sup_lev else 'other' for a in df['x_char']])
-#     return(df['x_char'])
-    
-# step_other(Xtrain['char_a'], sup_lev)
-
+## pool infrequently occurring values into an "other" category
 class StepOther(BaseEstimator, TransformerMixin):
     def __init__(self, threshold):
         super().__init__()
@@ -92,57 +71,21 @@ class StepOther(BaseEstimator, TransformerMixin):
         X = df.to_numpy()
         return X
 
-
-si_c = SimpleImputer(strategy='constant', fill_value='other')
-test = si_c.fit(Xtrain[['char_a']]).transform(Xtrain[['char_a']])
-
-my_StepOther = StepOther(.01)
-my_StepOther.fit(test)
-my_StepOther.transform(test)
-
-my_StepOther = StepOther(.01)
-my_StepOther.fit(Xtrain[['char_a']])
-my_StepOther.transform(Xtrain[['char_a']])
-
-
-si_c = SimpleImputer(strategy='constant', fill_value='other')
-test = si_c.fit(Xtrain[['char_a']]).transform(Xtrain[['char_a']])
-
-
-cat_vars = ['char_a']
-num_vars = ['num_a']
-# set up pipelines for each column group
-categorical_pipe = Pipeline([('my_StepOther', my_StepOther)])
-
-# set up columnTransformer
-ct = ColumnTransformer(
-                    transformers=[
-                        ('cats', categorical_pipe, cat_vars)
-                    ],
-                    remainder='drop',
-                    n_jobs=-1
-                    )
-## check ColumnTransformer
-ct.fit_transform(Xtrain)
-ct.transform(Xtest)
-
-
-## end test custom pipe
-
-# define transformers
+## define transformer instances
 si_n = SimpleImputer(missing_values=np.nan, strategy='mean')
 si_c = SimpleImputer(strategy='constant', fill_value='other')
 so_c = StepOther(.01)
 ss = StandardScaler()
 ohe = OneHotEncoder(drop='first')
 
-# define column groups with same processing
+## define column groups where same preprocessing steps will be carried out
 cat_vars = ['char_a']
 num_vars = ['num_a']
-# set up pipelines for each column group
+
 categorical_pipe = Pipeline([('si_c', si_c), ('so_c', so_c), ('ohe', ohe)])
 numeric_pipe = Pipeline([('si_n', si_n), ('ss', ss)])
-# set up columnTransformer
+
+## set up columnTransformer
 ct = ColumnTransformer(
                     transformers=[
                         ('nums', numeric_pipe, num_vars),
@@ -151,9 +94,10 @@ ct = ColumnTransformer(
                     remainder='drop',
                     n_jobs=-1
                     )
+
 ## check ColumnTransformer
-ct.fit_transform(Xtrain)
-ct.transform(Xtest)
+#ct.fit_transform(Xtrain)
+#ct.transform(Xtest)
 
 ## Step 2: model specification
 glm = PoissonRegressor()
@@ -167,23 +111,14 @@ pipe = Pipeline([('ct', ct), ('glm', glm)])
 cv = KFold(n_splits=4, shuffle=True, random_state=1)
 
 ## according to the documentation this is the percentage of deviance explained
-#cross_val_score(glm, X=Xtrain, y=ytrain, cv=cv)
 cross_val_score(pipe, X=Xtrain, y=ytrain, cv=cv, 
                 fit_params={'glm__sample_weight': swtrain})
 
-cross_val_score(pipe, X=Xtrain, y=ytrain, cv=cv)
-
 ## Step 4: fit final model
-#glm.fit(Xtrain, ytrain)
 pipe.fit(Xtrain, ytrain, **{'glm__sample_weight': swtrain})
-
-## check against vanilla glm object
-#glm.fit(ct.fit_transform(Xtrain), ytrain, sample_weight=swtrain)
-#glm.predict(ct.fit_transform(Xtrain))
 
 ## Step 5: eval final model on testing data
 ## according to the documentation this is the percentage of deviance explained
-#glm.score(Xtest, ytest)
 pipe.score(Xtest, ytest, sample_weight=swtest)
 
 ## make predictions on training data and testing data
