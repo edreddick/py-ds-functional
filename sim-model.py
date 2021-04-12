@@ -79,13 +79,6 @@ ct = ColumnTransformer(
                     remainder='drop'
                     )
 
-## check ColumnTransformer
-#so_c.fit(Xtrain[['char_a', 'char_b']].to_numpy())
-#so_c.transform(Xtrain[['char_a', 'char_b']].to_numpy())
-#ct.fit(Xtrain)
-#ct.fit_transform(Xtrain)
-#ct.transform(Xtest)
-
 ## Step 2: model specification
 glm = PoissonRegressor()
 
@@ -112,9 +105,3 @@ pipe.score(Xtest, ytest, sample_weight=swtest)
 ## neither take into account weights
 pipe.predict(Xtrain)
 pipe.predict(Xtest)
-
-## scrap code for hist
-#import matplotlib.pyplot as plt
-#fig, axs = plt.subplots(1, sharey=True, tight_layout=True)
-#axs.hist(df['count'], bins=20)
-## end scrap code
