@@ -20,17 +20,20 @@ n = 10000
 beta0 = -5
 beta1 = 0.2
 beta2 = .5
+beta3 = .3
 cleanup_nums = {"char_a": {"a": 0, "b": 1}}
+cleanup_nums_b = {"char_b": {"a": 0, "b": 1}}
 
 df = pd.DataFrame({'num_a': np.random.rand(n)*1.5,
                    'char_a': np.random.choice(['a', 'b'], n),
+                   'char_b': np.random.choice(['a', 'b'], n),
                    'exposure': np.clip(np.random.rand(n), .01, 1)})
 
-mu = np.exp((beta0 + beta1 * df.num_a + beta2 * (df.replace(cleanup_nums).char_a)) 
-            * df.exposure)
+mu = np.exp((beta0 + beta1 * df.num_a + beta2 * (df.replace(cleanup_nums).char_a) + 
+             + beta3 * (df.replace(cleanup_nums_b).char_b)) * df.exposure)
 
 df['count'] = np.random.poisson(lam = mu)
-del(n, beta0, beta1, beta2, mu)
+del(n, beta0, beta1, beta2, beta3, mu, cleanup_nums, cleanup_nums_b)
 
 ## Step 1: pre-process data
 ## naive pre-processing, this should occur within CV folds for any pre-processing
@@ -60,14 +63,26 @@ class StepOther(BaseEstimator, TransformerMixin):
         self.threshold = threshold
 
     def fit(self, X, y=None):
-        df = pd.DataFrame(X, columns = ['x_char'])
-        df = pd.DataFrame(df['x_char'].value_counts()/len(df))
-        self.sup_lev = list(df.query('x_char > @self.threshold').index)
+        
+        def get_sup_lev(x, threshold):
+            threshold = threshold[0]
+            df = pd.DataFrame(x.value_counts()/len(x))
+            df = df.rename(columns={ df.columns[0]: "x_name" })
+            return list(df.query(f"x_name > {threshold}").index)
+        df = pd.DataFrame(X.copy())
+        self.sup_levs = df.apply(get_sup_lev, threshold = [self.threshold])
         return self
 
     def transform(self, X, y=None):
-        df = pd.DataFrame(X, columns = ['x_char'])
-        df = df.assign(x_char = [a if a in self.sup_lev else 'other' for a in df['x_char']])
+        def set_sup_lev(x, sup_lev):
+            df = x.copy()
+            df.loc[np.in1d(x.values, sup_lev.values, invert=True)] = 'other'
+            return df
+        
+        df = pd.DataFrame(X.copy())
+        
+        for i in range(df.shape[1]):
+            df.iloc[:, i] = set_sup_lev(df.copy().iloc[:, i], self.sup_levs.iloc[:,i])
         X = df.to_numpy()
         return X
 
@@ -79,7 +94,7 @@ ss = StandardScaler()
 ohe = OneHotEncoder(drop='first')
 
 ## define column groups where same preprocessing steps will be carried out
-cat_vars = ['char_a']
+cat_vars = ['char_a', 'char_b']
 num_vars = ['num_a']
 
 categorical_pipe = Pipeline([('si_c', si_c), ('so_c', so_c), ('ohe', ohe)])
@@ -96,6 +111,9 @@ ct = ColumnTransformer(
                     )
 
 ## check ColumnTransformer
+#so_c.fit(Xtrain[['char_a', 'char_b']].to_numpy())
+#so_c.transform(Xtrain[['char_a', 'char_b']].to_numpy())
+#ct.fit(Xtrain)
 #ct.fit_transform(Xtrain)
 #ct.transform(Xtest)
 
