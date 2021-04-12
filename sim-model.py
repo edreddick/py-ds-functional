@@ -11,8 +11,8 @@ from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
+from src.stepother import StepOther
 import pdb
 
 np.random.seed(1)
@@ -56,36 +56,6 @@ Xtest.loc[Xtest.index[0], 'char_a'] = np.NaN
 Xtrain.loc[Xtrain.index[1], 'char_a'] = 'c'
 Xtest.loc[Xtest.index[1], 'char_a'] = 'c'
 
-## pool infrequently occurring values into an "other" category
-class StepOther(BaseEstimator, TransformerMixin):
-    def __init__(self, threshold):
-        super().__init__()
-        self.threshold = threshold
-
-    def fit(self, X, y=None):
-        
-        def get_sup_lev(x, threshold):
-            threshold = threshold[0]
-            df = pd.DataFrame(x.value_counts()/len(x))
-            df = df.rename(columns={ df.columns[0]: "x_name" })
-            return list(df.query(f"x_name > {threshold}").index)
-        df = pd.DataFrame(X.copy())
-        self.sup_levs = df.apply(get_sup_lev, threshold = [self.threshold])
-        return self
-
-    def transform(self, X, y=None):
-        def set_sup_lev(x, sup_lev):
-            df = x.copy()
-            df.loc[np.in1d(x.values, sup_lev.values, invert=True)] = 'other'
-            return df
-        
-        df = pd.DataFrame(X.copy())
-        
-        for i in range(df.shape[1]):
-            df.iloc[:, i] = set_sup_lev(df.copy().iloc[:, i], self.sup_levs.iloc[:,i])
-        X = df.to_numpy()
-        return X
-
 ## define transformer instances
 si_n = SimpleImputer(missing_values=np.nan, strategy='mean')
 si_c = SimpleImputer(strategy='constant', fill_value='other')
@@ -106,8 +76,7 @@ ct = ColumnTransformer(
                         ('nums', numeric_pipe, num_vars),
                         ('cats', categorical_pipe, cat_vars)
                     ],
-                    remainder='drop',
-                    n_jobs=-1
+                    remainder='drop'
                     )
 
 ## check ColumnTransformer
