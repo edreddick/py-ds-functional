@@ -31,6 +31,8 @@ https://towardsdatascience.com/functional-programing-in-data-science-projects-c9
 ## setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-the-step-by-step-guide-with-python-code-4a7d9b068156
 ## more exexplanation on setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-ef792bbb3260
 ## dealing with multiple transformations on the same column: https://towardsdatascience.com/using-columntransformer-to-combine-data-processing-steps-af383f7d5260
+## from sklearn.feature_selection import SelectKBest, VarianceThreshold
+## https://stackoverflow.com/questions/63467815/how-to-access-columntransformer-elements-in-gridsearchcv
 
 # import pdb 
 # pdb.set_trace() is debugger, similar to browser() in R
