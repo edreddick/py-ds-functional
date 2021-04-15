@@ -6,4 +6,4 @@ def check_params_exist(esitmator, params_keyword):
     else:
         return available_params
 
-##ex: print(check_params_exist(pipe, 'imputer'))
+##ex: print(check_params_exist(pipe, 'ct'))

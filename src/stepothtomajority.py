@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
-import pdb
 
 class StepOthToMajority(BaseEstimator, TransformerMixin):
     """ set other level to most occuring level when other level is sparse"""
