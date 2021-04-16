@@ -3,7 +3,6 @@
 Playing with python, typical data science tasks, and functional programming.
 """
 
-## Step 0: Create fake small dataset
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import PoissonRegressor
@@ -66,7 +65,7 @@ Xtest.loc[Xtest.index[1], 'char_a'] = 'c'
 ## Step 2: pre-process data, this will occur within CV folds so that 
 ## any pre-processing that requires estimation does not lead to leakage
 ## specify transfomers pre-processing steps for numeric and categorical variables
-numeric_pipe = Pipeline([('si_n', SimpleImputer(missing_values=np.nan, strategy='mean')), 
+numeric_pipe = Pipeline([('si_n', SimpleImputer(missing_values=np.nan)), 
                          ('ss_n', StandardScaler())])
 
 categorical_pipe = Pipeline([('si_c', SimpleImputer(strategy='constant', fill_value='other')), 

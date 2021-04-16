@@ -5,35 +5,6 @@ Rewrite of:
 https://towardsdatascience.com/functional-programing-in-data-science-projects-c909c11138bb
 """
 
-########################## notes ##########################
-## bad code for fitting models, but shows ex of pre-processing:
-## https://www.youtube.com/watch?v=0Lt9w-BxKFQ
-## import seaborn as sns
-## import matplotlib.pyplot as plt
-## from sklearn.ensemble import RandomForestClassifier 
-## from sklearn.metrics import confusion_matrix, classification_report
-## from sklearn.model_selection import train_test_split
-## from sklearn.preprocessing import StandardScalar, LabelEncoder
-## %matplotlib inline
-## from sklearn.linear_model import LinearRegression
-## model = LinearRegression(normalize=True)
-## model.fit(X, y)
-
-## sc = StandardScarler()
-## X_train = sc.fit_transform(X_train)
-## X_test = sc.transform(X_test)
-## preprocessing.FunctionTransformer seems promising
-## sklearn.pipeline also seems promising
-## RepeatedStratifiedKFold seems promising
-## grid search seems promising: https://scikit-learn.org/stable/modules/grid_search.html#grid-search
-## nested cv seems promising: https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html#sphx-glr-download-auto-examples-model-selection-plot-nested-cross-validation-iris-py
-## Pipeline looks promising: https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
-## setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-the-step-by-step-guide-with-python-code-4a7d9b068156
-## more exexplanation on setting up custom transformers: https://towardsdatascience.com/pipelines-custom-transformers-in-scikit-learn-ef792bbb3260
-## dealing with multiple transformations on the same column: https://towardsdatascience.com/using-columntransformer-to-combine-data-processing-steps-af383f7d5260
-## from sklearn.feature_selection import SelectKBest, VarianceThreshold
-## https://stackoverflow.com/questions/63467815/how-to-access-columntransformer-elements-in-gridsearchcv
-
 # import pdb 
 # pdb.set_trace() is debugger, similar to browser() in R
 # interact sometimes needed, followed by cntr + d to exit
