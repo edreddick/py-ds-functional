@@ -5,9 +5,9 @@ Playing with python, typical data science tasks, and functional programming.
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import PoissonRegressor
+import lightgbm as lgb
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, GridSearchCV
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -16,7 +16,7 @@ from src.stepothtomajority import StepOthToMajority
 from src.check_params_exist import check_params_exist
 import pdb
 
-## Step 0: Simulate tyical frequency data
+## Step 0: Simulate typical frequency data
 np.random.seed(1)
 n = 10000
 beta0 = -5
@@ -69,9 +69,9 @@ numeric_pipe = Pipeline([('si_n', SimpleImputer(missing_values=np.nan)),
                          ('ss_n', StandardScaler())])
 
 categorical_pipe = Pipeline([('si_c', SimpleImputer(strategy='constant', fill_value='other')), 
-                             ('so_c', StepOther(.01)), 
-                             ('sotm_c', StepOthToMajority(.01)), 
-                             ('ohe_c', OneHotEncoder(drop='first'))])
+                              ('so_c', StepOther(.01)), 
+                              ('sotm_c', StepOthToMajority(.01)), 
+                              ('oe_c', OrdinalEncoder(dtype=np.int32))])
 
 ## specify columnTransformer to combine all pre-processing steps
 ct = ColumnTransformer(
@@ -84,7 +84,7 @@ ct = ColumnTransformer(
 
 ## Step 3: model specification
 ## specify pipeline by combining pre-processing with model specification
-modspec = PoissonRegressor()
+modspec = lgb.LGBMRegressor()
 pipe = Pipeline([('ct', ct), ('modspec', modspec)])
 
 ## Step 4: eval model protocol on training data using CV
@@ -94,15 +94,25 @@ inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
 
 ## specify potential pre-processing choices and hyper-parameters
-param_grid = {'modspec__alpha' : [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-              'ct__nums__si_n__strategy' : ['mean', 'median']}
+param_grid = {'ct__nums__si_n__strategy' : ['mean', 'median'],
+              'modspec__boosting_type': ['gbdt'],
+              'modspec__objective': ['poisson'],
+              'modspec__n_estimators' : [10, 25, 50],
+              'modspec__learning_rate' : [.1],
+              'modspec__num_leaves': [15],
+              'modspec__max_depth' : [5],
+              'modspec__subsample': [.7],
+              'modspec__colsample_bytree': [.8],
+              'modspec__min_child_samples': [20],
+              'modspec__reg_alpha': [8],
+              'modspec__reg_lambda': [2]
+              }
 
 ## Specify modelling protocol which is to choose best set of pre-processing and 
 ## hyper params using grid search
 clf = GridSearchCV(pipe, param_grid=param_grid, cv=inner_cv, n_jobs= 1, verbose=5)
 
 ## assess modelling protocol using nested CV
-## according to the documentation this is the percentage of deviance explained
 cross_val_score(clf, X=Xtrain, y=ytrain, cv=outer_cv, 
                 fit_params={'modspec__sample_weight': swtrain})
 
@@ -111,7 +121,6 @@ clf.fit(X=Xtrain, y=ytrain, **{'modspec__sample_weight': swtrain})
 print(clf.best_params_)
 
 ## Step 6: eval final model on testing data
-## according to the documentation this is the percentage of deviance explained
 clf.score(Xtest, ytest)
 
 ## Step 7: make predictions on training data and testing data
